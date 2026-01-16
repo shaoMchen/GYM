@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>90KG 減脂教練 App v6.1</title>
+    <style>
+        :root { --primary: #2563eb; --secondary: #10b981; --accent: #f59e0b; --bg: #f1f5f9; --card-bg: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #1e293b; }
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; text-align: center; padding: 12px 0; font-size: 0.75em; color: #64748b; cursor: pointer; border: none; background: none; }
+        .nav-item.active { color: var(--primary); font-weight: bold; }
+        .nav-icon { font-size: 1.5em; display: block; margin-bottom: 2px; }
+        .page { display: none; padding: 15px; padding-bottom: 100px; animation: fadeIn 0.3s; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .card { background: var(--card-bg); padding: 18px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-top: 1px solid #f1f5f9; }
+        .h-title { margin: 0 0 15px 0; font-size: 1.3em; color: var(--primary); font-weight: 800; }
+        .section-label { font-size: 0.85em; color: #64748b; font-weight: bold; margin: 15px 0 10px 5px; display: block; }
+        .ex-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .ex-name { font-weight: bold; color: #1e293b; font-size: 1.1em; }
+        .muscle-note { font-size: 0.75em; color: var(--primary); background: #eff6ff; padding: 3px 10px; border-radius: 6px; margin-top: 5px; display: inline-block; font-weight: 500; }
+        .log-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .log-box { display: flex; flex-direction: column; font-size: 0.75em; color: #94a3b8; font-weight: bold; }
+        input { padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 16px; margin-top: 5px; background: #f8fafc; text-align: center; width: 80%; }
+        .day-nav { display: flex; overflow-x: auto; gap: 10px; margin-bottom: 20px; padding-bottom: 5px; }
+        .day-btn { padding: 10px 18px; background: white; border: 1.5px solid #e2e8f0; border-radius: 12px; cursor: pointer; white-space: nowrap; font-weight: 600; flex-shrink: 0; }
+        .day-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
+        .add-panel { background: #fff; padding: 20px; border-radius: 15px; border: 2px dashed var(--primary); margin: 20px 0; }
+        select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; margin-top: 10px; font-size: 16px; background: white; }
+        .btn-main { width: 100%; padding: 16px; background: var(--secondary); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 1.1em; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="page-workout" class="page active">
+    <div class="day-nav">
+        <button class="day-btn active" onclick="initDay(1)">週一</button>
+        <button class="day-btn" onclick="initDay(2)">週二</button>
+        <button class="day-btn" onclick="initDay(3)">週三</button>
+        <button class="day-btn" onclick="initDay(4)">週四</button>
+        <button class="day-btn" onclick="initDay(5)">週五</button>
+        <button class="day-btn" onclick="initDay(6)">週六</button>
+        <button class="day-btn" onclick="initDay(0)">週日</button>
+    </div>
+
+    <div class="card" style="border-top: 5px solid var(--primary);"><h3 id="todayTitle" style="margin:0"></h3></div>
+
+    <span class="section-label">📍 預設主要訓練</span>
+    <div id="defaultList"></div>
+
+    <span class="section-label">🔥 追加訓練內容</span>
+    <div id="extraList"></div>
+
+    <div class="add-panel">
+        <strong>➕ 追加動作：</strong>
+        <select id="partPicker" onchange="updateActionPicker()">
+            <option value="">1. 選擇部位</option>
+            <option value="chest">胸部</option><option value="back">背部</option><option value="leg">下肢</option><option value="shoulder">肩膀</option><option value="core">核心</option>
+        </select>
+        <select id="actionPicker" onchange="addExtraAction()" disabled><option value="">2. 選擇動作</option></select>
+    </div>
+    <button class="btn-main" onclick="saveWorkout()">💾 儲存今日紀錄</button>
+</div>
+
+<div id="page-status" class="page">
+    <h2 class="h-title">📈 進度追蹤</h2>
+    <div class="card">
+        <span class="section-label">身體組成</span>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="log-box">體重(kg)<input type="number" id="w-val" value="90" oninput="updateStats()"></div>
+            <div class="log-box">體脂(%)<input type="number" id="f-val" value="32.7" oninput="updateStats()"></div>
+        </div>
+        <p id="stat-text" style="margin-top:15px; font-size:0.9em; color:#475569;"></p>
+    </div>
+    <div class="card">
+        <span class="section-label">💪 1RM 計算機</span>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <input type="number" id="rm-w" placeholder="重量">
+            <input type="number" id="rm-r" placeholder="次數">
+        </div>
+        <button onclick="calcRM()" style="margin-top:15px; width:100%; padding:10px;">計算</button>
+        <h2 id="rm-res" style="text-align:center; color:var(--primary);">--</h2>
+    </div>
+</div>
+
+<div id="page-nutrition" class="page">
+    <h2 class="h-title">🥗 蛋白質精準管理</h2>
+    
+    <div class="card" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border:none;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+                <span style="opacity: 0.9; font-size: 0.9em;">今日已攝取</span>
+                <h1 style="margin:5px 0;"><span id="p-eaten">0</span> <small style="font-size:0.5em;">/ <span id="p-target-val">144</span> g</small></h1>
+            </div>
+            <div style="text-align: right;">
+                <span id="p-percent" style="font-weight: bold; font-size: 1.2em;">0%</span>
+            </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.2); height: 12px; border-radius: 6px; margin-top: 10px; overflow: hidden;">
+            <div id="p-progress-bar" style="background: #10b981; width: 0%; height: 100%; transition: 0.8s ease-out;"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <span class="section-label">⚡ 快速換算並紀錄</span>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <select id="food-type" style="margin:0;">
+                <option value="protein_meat">雞胸肉 (每 100g)</option>
+                <option value="protein_egg">雞蛋 (每 1 顆)</option>
+                <option value="protein_yogurt">希臘優格 (每 100g)</option>
+                <option value="protein_powder">乳清蛋白 (每 1 匙)</option>
+            </select>
+            <input type="number" id="food-qty" placeholder="份量/數值" oninput="calcProtein()">
+        </div>
+        <p id="calc-res" style="text-align: center; margin: 15px 0; font-weight: bold; color: var(--primary); min-height: 1.2em;"></p>
+        <button class="btn-main" onclick="addProteinRecord()" style="background: var(--primary);">➕ 一鍵加入今日累積</button>
+        <button onclick="resetProtein()" style="width:100%; background:none; border:none; color:#94a3b8; font-size:0.8em; margin-top:15px; text-decoration: underline;">清除今日紀錄，重新開始</button>
+    </div>
+
+    <div class="card">
+        <span class="section-label">🕒 訓練補給時間軸</span>
+        <div style="border-left: 2px solid #e2e8f0; margin-left: 10px; padding-left: 20px;">
+            <div style="margin-bottom: 15px;">
+                <b style="color: var(--primary);">訓前 1 小時</b><br>
+                <small>中量碳水（地瓜、香蕉），避免運動中飢餓。</small>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <b style="color: var(--secondary);">訓練中</b><br>
+                <small>每 15 分鐘補水 200cc，保持代謝效率。</small>
+            </div>
+            <div>
+                <b style="color: var(--accent);">訓後 30 分鐘</b><br>
+                <small>高吸收蛋白 + 少量碳水，修復受損肌肉。</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="page-info" class="page">
+    <h2 class="h-title">💡 訓練助手與知識</h2>
+    
+    <div class="card" style="border-left: 5px solid var(--accent);">
+        <span class="section-label">⏱️ 簡易間歇計時器 (HIIT 用)</span>
+        <div style="text-align: center;">
+            <h1 id="timer-display" style="font-size: 3em; margin: 10px 0;">40</h1>
+            <div style="display: flex; gap: 10px;">
+                <button class="day-btn" style="flex:1" onclick="startTimer(40, '#ef4444')">運動 (40s)</button>
+                <button class="day-btn" style="flex:1" onclick="startTimer(20, '#10b981')">休息 (20s)</button>
+                <button class="day-btn" style="flex:1" onclick="resetTimer()">重設</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <span class="section-label">📈 減脂進度表 (10% 體脂目標)</span>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-bottom: 5px;">
+            <span>起點: 32.7%</span>
+            <span>目前</span>
+            <span>目標: 22.7%</span>
+        </div>
+        <div style="background: #e2e8f0; height: 20px; border-radius: 10px; overflow: hidden;">
+            <div id="fat-progress-bar" style="background: var(--primary); width: 0%; height: 100%; transition: 1s;"></div>
+        </div>
+        <p style="font-size: 0.8em; color: #64748b; margin-top: 10px; text-align: center;">
+            💡 每週減少 0.5kg ~ 1kg 為最健康的減脂速度。
+        </p>
+    </div>
+
+    <div class="card">
+        <span class="section-label">📌 滑雪機 SkiErg 姿勢要點</span>
+        <ul style="font-size: 0.85em; padding-left: 20px; line-height: 1.8;">
+            <li><b>啟動：</b>雙手與眼同高，核心收緊。</li>
+            <li><b>發力：</b>運用體重下壓，而不僅是靠手臂拉。</li>
+            <li><b>結束：</b>拉到大腿兩側，順勢曲膝緩衝。</li>
+            <li><b>節奏：</b>吐氣下壓，吸氣回彈。</li>
+        </ul>
+    </div>
+</div>
+
+<div id="page-history" class="page">
+    <h2 class="h-title">📅 歷史訓練檔案</h2>
+    <div class="card" style="background: #f8fafc;">
+        <span class="section-label">數據統計</span>
+        <p id="history-stats" style="font-size: 0.9em; color: #475569;">載入中...</p>
+    </div>
+    <div id="history-container">
+        </div>
+</div>
+
+<nav class="bottom-nav">
+    <button class="nav-item active" onclick="switchPage('workout')"><span class="nav-icon">🏋️</span>訓練</button>
+    <button class="nav-item" onclick="switchPage('history')"><span class="nav-icon">📜</span>歷史</button>
+    <button class="nav-item" onclick="switchPage('status')"><span class="nav-icon">📊</span>數據</button>
+    <button class="nav-item" onclick="switchPage('nutrition')"><span class="nav-icon">🥗</span>營養</button>
+    <button class="nav-item" onclick="switchPage('info')"><span class="nav-icon">💡</span>參考</button>
+</nav>
+
+<script>
+    const masterLib = {
+        chest: [{name:"機械推胸",note:"全胸"}, {name:"上斜啞鈴推",note:"上胸"}],
+        back: [{name:"滑輪下拉",note:"背寬"}, {name:"機械划船",note:"背厚"}],
+        leg: [{name:"機械腿推",note:"大腿"}, {name:"分腿蹲",note:"燃脂"}],
+        shoulder: [{name:"機械肩推",note:"肩膀"}, {name:"側平舉",note:"肩寬"}],
+        core: [{name:"滑輪木剁",note:"斜腹"}, {name:"平板支撐",note:"核心"}]
+    };
+
+const presets = {
+    1: { 
+        title: "週一：純「推」大肌群 (胸/肩)", 
+        actions: [
+            {name:"坐姿推胸機", note:"胸部主項，建立基礎力量", type:"strength"},
+            {name:"上斜啞鈴臥推", note:"強化上胸，視覺更挺拔", type:"strength"},
+            {name:"機械夾胸", note:"雕塑胸肌中縫細節", type:"strength"},
+            {name:"機械坐姿肩推", note:"增加肩膀厚度，顯腰瘦", type:"strength"},
+            {name:"啞鈴側平舉", note:"雕塑肩膀寬度", type:"strength"},
+            {name:"輔助支撐撐體", note:"王牌動作：刺激下胸與肩前", type:"strength"},
+            {name:"滑雪機 (15m)", note:"燃脂結尾：心率維持 135+", type:"cardio"}
+        ] 
+    },
+    2: { 
+        title: "週二：純「拉」大肌群 (背/後三角)", 
+        actions: [
+            {name:"滑盤 HIIT", note:"心肺代謝補償", type:"hiit"},
+            {name:"寬握滑輪下拉", note:"增加背寬，提高代謝", type:"strength"},
+            {name:"坐姿划船機", note:"針對背部厚度", type:"strength"},
+            {name:"機械划船", note:"強大複合動作，燃脂極佳", type:"strength"},
+            {name:"臉拉 (Face Pull)", note:"保護肩關節，穩定揮拍", type:"strength"},
+            {name:"懸垂舉腿", note:"強化核心，支撐體重", type:"strength"},
+            {name:"滑雪機 (15m)", note:"燃脂結尾", type:"cardio"}
+        ] 
+    },
+    3: { 
+        title: "週三：主動式恢復", 
+        actions: [
+            {name:"滾筒筋膜放鬆", note:"全身大肌群按壓", type:"strength"},
+            {name:"靜態伸展", note:"改善訓練後的緊繃", type:"strength"}
+        ] 
+    },
+    4: { 
+        title: "週四：下肢專項 (腿/臀)", 
+        actions: [
+            {name:"機械腿推", note:"安全上大重量，燃脂王", type:"strength"},
+            {name:"高杯深蹲", note:"強化股四頭與核心穩定", type:"strength"},
+            {name:"俯臥腿後彎舉", note:"平衡前後側，預防受傷", type:"strength"},
+            {name:"保加利亞分腿蹲", note:"極致心率，強化單腳穩定", type:"strength"},
+            {name:"機械背部伸展", note:"強化下背，支撐體重", type:"strength"},
+            {name:"滑雪機 (10m)", note:"高強度衝刺結尾", type:"cardio"}
+        ] 
+    },
+    5: { 
+        title: "週五：全身功能與 HIIT", 
+        actions: [
+            {name:"滑盤 HIIT", note:"心肺代謝補償", type:"hiit"},
+            {name:"六角槓硬舉", note:"全身大力量徵召", type:"strength"},
+            {name:"滑雪機 (20m)", note:"當週最後耐力挑戰", type:"cardio"}
+        ] 
+    },
+    6: { 
+        title: "週六：羽球運動日", 
+        actions: [{name:"羽球專項運動", note:"高強度間歇心肺", type:"cardio"}] 
+    },
+    0: { 
+        title: "週日：低強度活動 (LISS)", 
+        actions: [{name:"坡度快走", note:"脂肪氧化區間", type:"cardio"}] 
+    }
+};
+
+    let currentDay = 1;
+
+    function switchPage(p) {
+        document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(nv => nv.classList.remove('active'));
+        document.getElementById('page-'+p).classList.add('active');
+        event.currentTarget.classList.add('active');
+	if (p === 'history') {
+        renderHistory();
+    }
+    }
+
+    function renderHistory() {
+    const container = document.getElementById('history-container');
+    const statsText = document.getElementById('history-stats');
+    container.innerHTML = '';
+    
+    const allKeys = Object.keys(localStorage).filter(k => k.match(/^\d{4}-\d{2}-\d{2}/)); // 匹配 YYYY-MM-DD
+    allKeys.sort().reverse(); // 按日期倒序排
+
+    if (allKeys.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#94a3b8; margin-top:20px;">尚無歷史紀錄，開始今日訓練吧！</p>';
+        statsText.innerText = "目前還沒有紀錄喔。";
+        return;
+    }
+
+    statsText.innerText = `總共已完成 ${allKeys.length} 項訓練動作紀錄。`;
+
+    let lastDate = "";
+    allKeys.forEach(key => {
+        const datePart = key.split('-').slice(0, 3).join('-'); // 提取日期部分
+        const data = JSON.parse(localStorage.getItem(key));
+        
+        // 如果是新日期，顯示日期標籤
+        if (datePart !== lastDate) {
+            const dateHeader = document.createElement('div');
+            dateHeader.className = 'section-label';
+            dateHeader.style = "margin-top: 25px; color: var(--primary); font-size: 1em; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;";
+            dateHeader.innerText = `📅 ${datePart}`;
+            container.appendChild(dateHeader);
+            lastDate = datePart;
+        }
+
+        // 根據 key 的後綴找出動作名稱 (從 presets 匹配或儲存時增加名稱)
+        // 為了簡單起見，我們在 saveItem 時多存一個名稱進去
+        const itemCard = document.createElement('div');
+        itemCard.className = 'card';
+        itemCard.style = "padding: 12px; margin-bottom: 8px; border-left: 4px solid #cbd5e1;";
+        
+        // 判斷指標類型 (重量/時間/循環)
+        let displayUnits = `量: ${data.v1} | 組: ${data.v2} | 次: ${data.v3}`;
+        
+        itemCard.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:bold; font-size:0.95em; color:#1e293b;">${key.split('-').slice(3).join('-')}</span>
+                <span style="font-size:0.85em; color:#64748b;">${displayUnits}</span>
+            </div>
+        `;
+        container.appendChild(itemCard);
+    });
+}
+
+    function initDay(d) {
+        currentDay = d;
+        document.querySelectorAll('.day-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', [1,2,3,4,5,6,0][i] === d);
+        });
+        document.getElementById('todayTitle').innerText = presets[d].title;
+        renderWorkout();
+    }
+
+    function renderWorkout() {
+        const defContainer = document.getElementById('defaultList');
+        defContainer.innerHTML = '';
+        presets[currentDay].actions.forEach((ex, i) => {
+            defContainer.innerHTML += createCardHTML(ex, `def-${currentDay}-${i}`);
+        });
+
+        const extraContainer = document.getElementById('extraList');
+        const extras = JSON.parse(localStorage.getItem(`v6-extras-${currentDay}`)) || [];
+        extraContainer.innerHTML = '';
+        extras.forEach((ex, i) => {
+            extraContainer.innerHTML += createCardHTML(ex, `ext-${currentDay}-${i}`, true, i);
+        });
+    }
+
+    function createCardHTML(ex, key, isExt = false, idx = null) {
+    // 優先讀取「上次紀錄」，作為預設值顯示
+    const lastData = JSON.parse(localStorage.getItem(`last-${key}`)) || {v1:'', v2:'', v3:''};
+    
+    let label1 = "重量(kg)", label2 = "組數", label3 = "次數";
+    if(ex.type === 'cardio' || ex.name.includes("滑雪機")) { 
+        label1 = "時間(m)"; label2 = "阻力"; label3 = "心率"; 
+    }
+
+    return `
+        <div class="card">
+            <div class="ex-header">
+                <div>
+                    <span class="ex-name">${ex.name}</span><br>
+                    <span class="muscle-note">📌 ${ex.note}</span>
+                </div>
+            </div>
+            <div style="font-size:0.7em; color:var(--primary); margin-bottom:5px;">上次紀錄: ${lastData.v1 || '--'} / ${lastData.v2 || '--'} / ${lastData.v3 || '--'}</div>
+            <div class="log-grid">
+                <div class="log-box">${label1}<input id="v1-${key}" placeholder="${lastData.v1}"></div>
+                <div class="log-box">${label2}<input id="v2-${key}" placeholder="${lastData.v2}"></div>
+                <div class="log-box">${label3}<input id="v3-${key}" placeholder="${lastData.v3}"></div>
+            </div>
+        </div>`;
+}
+
+    function addExtraAction() {
+        const picker = document.getElementById('actionPicker');
+        if(!picker.value) return;
+        const extras = JSON.parse(localStorage.getItem(`v6-extras-${currentDay}`)) || [];
+        extras.push(JSON.parse(picker.value));
+        localStorage.setItem(`v6-extras-${currentDay}`, JSON.stringify(extras));
+        picker.value = "";
+        renderWorkout();
+    }
+
+    function removeExtra(idx) {
+        const extras = JSON.parse(localStorage.getItem(`v6-extras-${currentDay}`)) || [];
+        extras.splice(idx, 1);
+        localStorage.setItem(`v6-extras-${currentDay}`, JSON.stringify(extras));
+        renderWorkout();
+    }
+
+    function saveWorkout() {
+        presets[currentDay].actions.forEach((_, i) => saveItem(`def-${currentDay}-${i}`));
+        const extras = JSON.parse(localStorage.getItem(`v6-extras-${currentDay}`)) || [];
+        extras.forEach((_, i) => saveItem(`ext-${currentDay}-${i}`));
+        alert('✅ 儲存成功');
+    }
+
+    function saveItem(k) {
+    const today = new Date().toLocaleDateString('zh-TW', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g, '-');
+    
+    // 獲取動作名稱（從 DOM 抓取）
+    const actionName = document.querySelector(`#v1-${k}`).closest('.card').querySelector('.ex-name').innerText;
+    const dateKey = `${today}-${actionName}`; // 例如：2024-05-20-坐姿推胸機
+    
+    const data = {
+        v1: document.getElementById(`v1-${k}`).value || '0',
+        v2: document.getElementById(`v2-${k}`).value || '0',
+        v3: document.getElementById(`v3-${k}`).value || '0'
+    };
+    
+    localStorage.setItem(dateKey, JSON.stringify(data));
+    localStorage.setItem(`last-${k}`, JSON.stringify(data)); // 同步更新下週參考
+}
+    function updateActionPicker() {
+        const p = document.getElementById('partPicker').value;
+        const picker = document.getElementById('actionPicker');
+        picker.innerHTML = '<option value="">2. 選擇動作</option>';
+        if(p) {
+            picker.disabled = false;
+            masterLib[p].forEach(ex => picker.innerHTML += `<option value='${JSON.stringify(ex)}'>${ex.name}</option>`);
+        }
+    }
+
+    function calcRM() {
+        const w = document.getElementById('rm-w').value;
+        const r = document.getElementById('rm-r').value;
+        if(w && r) document.getElementById('rm-res').innerText = Math.round(w * (1 + r/30)) + " kg";
+    }
+
+// 初始化蛋白質數據
+let dailyProtein = parseFloat(localStorage.getItem('daily_protein_total')) || 0;
+
+function calcProtein() {
+    const type = document.getElementById('food-type').value;
+    const qty = parseFloat(document.getElementById('food-qty').value);
+    const calcRes = document.getElementById('calc-res');
+    
+    if (!qty || qty <= 0) {
+        calcRes.innerText = "";
+        return;
+    }
+
+    let proteinPerUnit = 0;
+    if (type === "protein_meat") proteinPerUnit = 0.25;
+    if (type === "protein_egg") proteinPerUnit = 7;
+    if (type === "protein_yogurt") proteinPerUnit = 0.1;
+    if (type === "protein_powder") proteinPerUnit = 24;
+
+    const result = Math.round(qty * proteinPerUnit);
+    calcRes.innerText = `這份含有約 ${result} g 蛋白質`;
+    return result;
+}
+
+function addProteinRecord() {
+    const amount = calcProtein();
+    if (amount > 0) {
+        dailyProtein += amount;
+        saveAndRefreshProtein();
+        
+        // 清空輸入框
+        document.getElementById('food-qty').value = "";
+        document.getElementById('calc-res').innerText = "✅ 已加入！";
+        setTimeout(() => { document.getElementById('calc-res').innerText = ""; }, 2000);
+    } else {
+        alert("請先輸入份量");
+    }
+}
+
+function saveAndRefreshProtein() {
+    // 儲存到本地
+    localStorage.setItem('daily_protein_total', dailyProtein);
+    
+    // 更新顯示文字
+    document.getElementById('p-eaten').innerText = dailyProtein;
+    
+    // 計算目標達成率
+    const weight = document.getElementById('w-val').value || 90;
+    const target = Math.round(weight * 1.6);
+    document.getElementById('p-target-val').innerText = target;
+    
+    const percent = Math.round((dailyProtein / target) * 100);
+    document.getElementById('p-percent').innerText = percent + "%";
+    
+    // 更新進度條
+    const bar = document.getElementById('p-progress-bar');
+    bar.style.width = Math.min(percent, 100) + "%";
+    
+    // 達成目標變色鼓勵
+    if (percent >= 100) {
+        bar.style.background = "#f59e0b"; // 變成金黃色
+    } else {
+        bar.style.background = "#10b981"; // 預設綠色
+    }
+}
+
+function resetProtein() {
+    if (confirm("確定要清除今天的蛋白質累積紀錄嗎？")) {
+        dailyProtein = 0;
+        saveAndRefreshProtein();
+    }
+}
+
+// 修改原有的 window.onload 確保啟動時讀取數據
+const originalOnload = window.onload;
+window.onload = () => {
+    if (originalOnload) originalOnload();
+    saveAndRefreshProtein(); // 初始化蛋白質面板
+};
+
+// 修改 updateStats 讓體重改變時，蛋白質目標同步更新
+function updateStats() {
+    const w = document.getElementById('w-val').value || 90;
+    const f = document.getElementById('f-val').value || 32.7;
+    document.getElementById('p-target').innerText = Math.round(w * 1.6); // 舊版標籤相容
+    document.getElementById('stat-text').innerText = `目前：${w}kg / ${f}%。 目標體脂：22.7%。`;
+    saveAndRefreshProtein(); // 同步更新蛋白質目標顯示
+}
+// 額外加強：讓頂部進度條會動
+function updateProteinProgressBar(currentInTake) {
+    const target = parseFloat(document.getElementById('p-target').innerText);
+    const bar = document.getElementById('p-progress');
+    // 注意：這裡僅為示意單次攝取佔比，實際應累積計算
+    let percent = (currentInTake / target) * 100;
+    bar.style.width = Math.min(100, percent) + '%';
+}
+
+// --- 參考頁面計時器功能 ---
+let timerInterval;
+function startTimer(seconds, color) {
+    clearInterval(timerInterval);
+    let timeLeft = seconds;
+    const display = document.getElementById('timer-display');
+    display.style.color = color;
+    
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        display.innerText = timeLeft;
+        if(timeLeft <= 0) {
+            clearInterval(timerInterval);
+            display.innerText = "完成!";
+            // 播放震動或提示音 (手機支援時)
+            if(navigator.vibrate) navigator.vibrate(200);
+        }
+    }, 1000);
+}
+
+function resetTimer() {
+    clearInterval(timerInterval);
+    document.getElementById('timer-display').innerText = "40";
+    document.getElementById('timer-display').style.color = "#1e293b";
+}
+
+// --- 進度條更新功能 ---
+function updateProgressBars() {
+    const currentFat = document.getElementById('f-val').value || 32.7;
+    const startFat = 32.7;
+    const targetFat = 22.7;
+    
+    // 計算體脂進度
+    let progress = ((startFat - currentFat) / (startFat - targetFat)) * 100;
+    progress = Math.max(0, Math.min(100, progress)); // 限制在 0-100
+    document.getElementById('fat-progress-bar').style.width = progress + '%';
+}
+
+// 修改原有的 updateStats 加上進度條呼叫
+const originalUpdateStats = updateStats;
+updateStats = function() {
+    originalUpdateStats();
+    updateProgressBars();
+}; 
+
+    function updateStats() {
+        const w = document.getElementById('w-val').value || 90;
+        const f = document.getElementById('f-val').value || 32.7;
+        document.getElementById('p-target').innerText = Math.round(w * 1.6);
+        document.getElementById('stat-text').innerText = `目前：${w}kg / ${f}%。 目標體脂：22.7%。`;
+    }
+
+    window.onload = () => { initDay(1); updateStats(); };
+</script>
+</body>
+</html>
